@@ -222,3 +222,8 @@ __marimo__/
 # Harness: symlink to the private research-notes repo, machine-specific
 notes
 CLAUDE.local.md
+
+# Experiment outputs
+experiments/results/
+analysis/results/
+data/raw/
