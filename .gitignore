@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Harness: symlink to the private research-notes repo, machine-specific
+notes
+CLAUDE.local.md
