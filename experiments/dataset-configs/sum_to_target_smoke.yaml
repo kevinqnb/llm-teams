@@ -1,0 +1,5 @@
+n: 4
+num_episodes: 5
+target_dist: uniform
+feedback: direction
+seed: 0

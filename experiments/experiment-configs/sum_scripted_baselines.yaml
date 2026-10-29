@@ -1,0 +1,13 @@
+name: sum_scripted_baselines
+task: sum_to_target
+dataset: sum_to_target_default
+agents: {type: oracle, know_n: true, know_id: true}
+episode: {max_turns: 20, invalid_policy: random}
+comms:
+  action_graph: {generator: empty}
+  message_graph: {generator: empty}
+seed: 0
+episodes_per_batch: 64
+sweep:
+  dataset.n: [4, 8, 16, 32]
+  agents.type: [oracle, id_bisection, random]

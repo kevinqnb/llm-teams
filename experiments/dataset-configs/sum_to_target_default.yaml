@@ -1,0 +1,5 @@
+n: 8
+num_episodes: 50
+target_dist: uniform      # uniform | fixed (with `target:`)
+feedback: direction       # direction | direction_and_distance | exact_sum
+seed: 0

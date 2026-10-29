@@ -1,0 +1,14 @@
+name: sum_smoke
+task: sum_to_target
+dataset: sum_to_target_smoke
+model: qwen3.5-4b
+prompt: sum_to_target/default
+agents: {type: llm, know_n: true, know_id: true, memory: structured}
+episode: {max_turns: 10, invalid_policy: random}
+comms:
+  action_graph: {generator: random_k, p: 0.0, resample: per_turn, action_history: last}
+  message_graph: {generator: empty}
+seed: 0
+episodes_per_batch: 64
+sweep:
+  comms.action_graph.p: [0.0, 1.0]

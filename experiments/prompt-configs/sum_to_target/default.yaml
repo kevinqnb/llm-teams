@@ -1,0 +1,85 @@
+# Jinja2 templates; each receives `view` (see llm_teams.agents.view.AgentView).
+# `macros` is prepended to every field.
+macros: |
+  {% macro fb(f) -%}
+  {%- if f.result == "too_high" %}Too high{% elif f.result == "too_low" %}Too low{% else %}Correct{% endif -%}
+  {%- if f.distance is defined %} (off by {{ f.distance }}){% endif -%}
+  {%- if f.sum is defined %} (the sum was {{ f.sum }}){% endif -%}
+  {%- endmacro %}
+  {% macro history(view) -%}
+  {% if view.own_actions %}
+  Your history so far:
+  {% for a in view.own_actions %}
+  - Turn {{ loop.index }}: you chose {{ a }}; feedback to the whole team: {{ fb(view.feedback_history[loop.index0]) }}
+  {% endfor %}
+  {% else %}
+  This is the first turn; there is no history yet.
+  {% endif %}
+  {%- endmacro %}
+  {% macro shared(view) -%}
+  {% if view.action_neighbors %}
+  You can see what these agents chose on earlier turns: {{ view.action_neighbors | join(", ") }}.
+  {% for t, seen in view.visible_actions.items() %}
+  {% for j, a in seen.items() %}
+  - Turn {{ t }}: agent {{ j }} chose {{ a }}
+  {% endfor %}
+  {% endfor %}
+  {% else %}
+  You cannot see any other agent's choices.
+  {% endif %}
+  {% if view.notes %}
+  Messages from your group:
+  {% for note in view.notes %}
+  - Agent {{ note.author }} (after turn {{ note.after_turn }}): {{ note.text }}
+  {% endfor %}
+  {% endif %}
+  {%- endmacro %}
+
+system: |
+  You are one member of a team of {{ view.n if view.n is not none else "several" }} agents playing a cooperative game.
+  {% if view.self_id is not none %}
+  Your agent ID is {{ view.self_id }} (IDs run from 0 to {{ view.n - 1 if view.n is not none else "n-1" }}).
+  {% endif %}
+
+  Rules:
+  - There is a hidden target number between 0 and {{ view.n if view.n is not none else "the number of agents" }}.
+  - On every turn each agent simultaneously chooses 0 or 1. The team's sum is the total of all choices.
+  - If the sum equals the target, the team wins and the game ends.
+  - Otherwise every agent is told whether the sum was "Too high" or "Too low"{% if view.task_info.feedback == "direction_and_distance" %}, and by how much{% elif view.task_info.feedback == "exact_sum" %}, and what the sum was{% endif %}.
+  - The game ends in failure after {{ view.max_turns }} turns.
+
+  Your goal is for the team to win in as few turns as possible. You do not know the target and
+  you cannot see the other agents' choices unless stated below.
+  {% if view.group is not none %}
+  {% if view.group.members %}
+
+  Communication: you are in a group with {{ view.group.members | reject("equalto", view.self_id) | join(", ") }}
+  and can exchange short messages with them{% if view.group.outside %}; the other {{ view.group.outside }} {{ "agent is" if view.group.outside == 1 else "agents are" }} outside your group and cannot be reached{% endif %}.
+  Messages are written after each turn's feedback.
+  {% else %}
+
+  Communication: you cannot send or receive messages.
+  {% endif %}
+  {% endif %}
+
+action: |
+  {{ history(view) }}
+  {{ shared(view) }}
+  Turn {{ view.turn }} of at most {{ view.max_turns }}: choose 0 or 1.
+
+  Finish your reply with a final line in exactly this format:
+  ANSWER: 0
+  or
+  ANSWER: 1
+
+discussion: |
+  {{ history(view) }}
+  {{ shared(view) }}
+  Turn {{ view.turn }} is over{% if view.turn == 0 %} (this is the planning phase before turn 1){% endif %}.
+  Write a short message (at most a few sentences) to your group {{ view.group.members | reject("equalto", view.self_id) | join(", ") if view.group else "" }}
+  to help the team reach the target faster, for example a plan for the next turn. Other
+  agents only see this message, not your reasoning. Do not write an ANSWER line.
+
+retry: |
+  Your last reply did not end with a valid answer. Reply again and finish with a final line
+  that is exactly `ANSWER: 0` or `ANSWER: 1`.
