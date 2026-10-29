@@ -1,0 +1,19 @@
+name: sum_clique
+task: sum_to_target
+dataset: sum_to_target_default
+model: qwen3.5-4b
+prompt: sum_to_target/default
+agents: {type: llm, know_n: true, know_id: true, memory: structured}
+episode: {max_turns: 20, invalid_policy: random}
+comms:
+  action_graph: {generator: empty}
+  message_graph: {generator: clique, p: 0.5, resample: fixed}
+  discussion_rounds: 1
+  planning_rounds: 0
+  max_message_tokens: 200
+  reveal_group: true
+seed: 0
+episodes_per_batch: 64
+sweep:
+  dataset.n: [4, 8, 16]
+  comms.message_graph.p: [0.0, 0.25, 0.5, 0.75, 1.0]

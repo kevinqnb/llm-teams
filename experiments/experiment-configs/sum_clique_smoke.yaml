@@ -1,0 +1,17 @@
+name: sum_clique_smoke
+task: sum_to_target
+dataset: sum_to_target_smoke
+model: qwen3.5-4b
+prompt: sum_to_target/default
+agents: {type: llm, know_n: true, know_id: true, memory: structured}
+episode: {max_turns: 10, invalid_policy: random}
+comms:
+  action_graph: {generator: empty}
+  message_graph: {generator: clique, p: 0.5, resample: fixed}
+  discussion_rounds: 1
+  max_message_tokens: 200
+  reveal_group: true
+seed: 0
+episodes_per_batch: 64
+sweep:
+  comms.message_graph.p: [0.5, 1.0]
