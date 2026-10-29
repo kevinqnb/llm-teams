@@ -1,0 +1,26 @@
+name: git-signoff notes
+
+# Rebuilds refs/notes/signoff from attestation commits — in main's
+# history and in the heads of merged pull requests from this repository — and
+# pushes it. Interviews run in cloud sessions cannot push notes themselves; this
+# is what lets a squash- or rebase-merged branch's attestation survive.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  recover-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: jerrylin96/git-signoff/recover@verify-v1.7
+        with:
+          branch: main
