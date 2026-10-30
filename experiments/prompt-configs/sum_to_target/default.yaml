@@ -17,13 +17,15 @@ macros: |
   {% endif %}
   {%- endmacro %}
   {% macro shared(view) -%}
-  {% if view.action_neighbors %}
-  You can see what these agents chose on earlier turns: {{ view.action_neighbors | join(", ") }}.
+  {% if view.action_neighbors and view.visible_actions %}
+  Choices you observed from other agents (agent IDs {{ view.action_neighbors | join(", ") }}) on earlier turns:
   {% for t, seen in view.visible_actions.items() %}
   {% for j, a in seen.items() %}
   - Turn {{ t }}: agent {{ j }} chose {{ a }}
   {% endfor %}
   {% endfor %}
+  {% elif view.action_neighbors %}
+  After each turn you will be able to see what agents {{ view.action_neighbors | join(", ") }} chose in it.
   {% else %}
   You cannot see any other agent's choices.
   {% endif %}
@@ -66,6 +68,8 @@ action: |
   {{ history(view) }}
   {{ shared(view) }}
   Turn {{ view.turn }} of at most {{ view.max_turns }}: choose 0 or 1.
+
+  Keep your reasoning short (a few sentences at most) and do not second-guess the setup.
 
   Finish your reply with a final line in exactly this format:
   ANSWER: 0

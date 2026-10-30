@@ -6,6 +6,8 @@ from llm_teams.types import GenerationRequest, GenerationResult
 
 
 class Backend(ABC):
+    name = "unknown"
+
     @abstractmethod
     def generate(self, requests: list[GenerationRequest]) -> list[GenerationResult]:
         """Order-preserving batched generation."""

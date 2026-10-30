@@ -10,6 +10,8 @@ from llm_teams.types import GenerationRequest, GenerationResult
 
 
 class VLLMBackend(Backend):
+    name = "vllm"
+
     def __init__(self, cfg: ModelConfig) -> None:
         from vllm import LLM  # imported lazily: vllm is an optional extra, needs a GPU node
 
@@ -47,5 +49,6 @@ class VLLMBackend(Backend):
                 req.request_id, text, content, reasoning,
                 prompt_tokens=len(out.prompt_token_ids or []),
                 completion_tokens=len(out.outputs[0].token_ids), latency=per_call,
+                finish_reason=out.outputs[0].finish_reason,
             ))
         return results

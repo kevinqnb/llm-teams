@@ -99,11 +99,23 @@ class RunDir:
                 (nd / f"after_turn_{t}_round_{r}.md").write_text(board.render_markdown(t, r, graph))
         _jsonl_append(self.path / "episodes.jsonl", [out.episode])  # last: marks completion
 
-    def write_manifest(self, cfg: ExperimentConfig, argv: list[str], start: float, end: float | None):
+    def check_backend(self, backend: Backend) -> None:
+        """Refuse to resume a run directory written by a different backend (e.g. mock vs vllm)."""
+        f = self.path / "manifest.json"
+        prev = json.loads(f.read_text()).get("backend") if f.exists() else None
+        if prev is not None and prev != backend.name:
+            raise RuntimeError(
+                f"{self.path} was written by backend '{prev}', not '{backend.name}'; "
+                "delete it or move it aside to start fresh")
+
+    def write_manifest(self, cfg: ExperimentConfig, argv: list[str], start: float, end: float | None,
+                       backend: Backend | None = None):
         (self.path / "config.resolved.yaml").write_text(yaml.safe_dump(cfg.model_dump(mode="json")))
         manifest = {
             "git_commit": _git("rev-parse", "HEAD"), "git_dirty": bool(_git("status", "--porcelain")),
             "versions": {p: _version(p) for p in ("llm-teams", "vllm", "torch", "transformers")},
+            "backend": backend.name if backend else None,
+            "model_id": cfg.model.model_id if cfg.model else None,
             "python": sys.version.split()[0], "hostname": platform.node(),
             "gpu": os.environ.get("CUDA_VISIBLE_DEVICES"), "start": start, "end": end, "argv": argv,
         }
@@ -150,7 +162,8 @@ def run_condition(
 ) -> int:
     """Run all pending episodes of one condition. Returns number of episodes run."""
     start = time.time()
-    run_dir.write_manifest(cfg, argv or [], start, None)
+    run_dir.check_backend(backend)
+    run_dir.write_manifest(cfg, argv or [], start, None, backend)
     instances = TASKS.get(cfg.task).make_instances(cfg.dataset.model_dump())
     if max_episodes is not None:
         instances = instances[:max_episodes]
@@ -160,7 +173,7 @@ def run_condition(
         batch = pending[lo:lo + cfg.episodes_per_batch]
         gens = {e: run_episode(build_spec(cfg, e, instances[e], run_dir.cond_hash)) for e in batch}
         drive(gens, backend, run_dir.write)
-    run_dir.write_manifest(cfg, argv or [], start, time.time())
+    run_dir.write_manifest(cfg, argv or [], start, time.time(), backend)
     return len(pending)
 
 

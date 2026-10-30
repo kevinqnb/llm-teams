@@ -102,7 +102,7 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
             **req.meta, "messages": req.messages, "raw_output": res.text,
             "reasoning": res.reasoning, "content": res.content, "parsed": parsed, "valid": valid,
             "prompt_tokens": res.prompt_tokens, "completion_tokens": res.completion_tokens,
-            "latency": res.latency,
+            "latency": res.latency, "finish_reason": res.finish_reason,
         })
 
     def discuss(phase: str, turn: int, rnd: int):

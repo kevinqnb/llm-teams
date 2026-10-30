@@ -7,6 +7,8 @@ from llm_teams.types import GenerationRequest, GenerationResult
 
 
 class MockBackend(Backend):
+    name = "mock"
+
     """Canned outputs: `fn(request) -> text` (default: always 'ANSWER: 0'). Records calls."""
 
     def __init__(self, fn: Callable[[GenerationRequest], str] | None = None) -> None:
@@ -20,5 +22,6 @@ class MockBackend(Backend):
             text = self.fn(r)
             reasoning, content = split_reasoning(text)
             out.append(GenerationResult(r.request_id, text, content, reasoning,
-                                        completion_tokens=len(text.split())))
+                                        completion_tokens=len(text.split()),
+                                        finish_reason="stop"))
         return out

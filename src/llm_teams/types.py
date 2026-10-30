@@ -42,6 +42,7 @@ class GenerationResult:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     latency: float = 0.0
+    finish_reason: str | None = None  # 'stop' | 'length' | ...
 
 
 @dataclass(frozen=True)
