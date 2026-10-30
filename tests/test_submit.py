@@ -41,6 +41,11 @@ def test_print_array_job(tmp_path):
     assert not (tmp_path / "results").exists()  # --print has no side effects
 
 
+def test_no_overrides_adds_no_stray_argument(tmp_path):
+    last = sh([BASELINES, "--print"], tmp_path).stdout.strip().splitlines()[-1]
+    assert last.endswith("--shard $SGE_TASK_ID/12") and "''" not in last
+
+
 def test_default_one_task_per_condition_and_shard_clamp(tmp_path):
     assert "-t 1-12" in sh([BASELINES, "--print"], tmp_path).stdout
     r = sh([BASELINES, "--print", "--shards", "50"], tmp_path)

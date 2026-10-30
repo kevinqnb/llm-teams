@@ -83,7 +83,8 @@ RESULTS="${LLM_TEAMS_RESULTS_DIR:-$ROOT/experiments/results}/$NAME"
 LOGS="$RESULTS/logs"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 JOB_SCRIPT="$LOGS/job_$STAMP.sh"
-printf -v OVERRIDES '%q ' "${EXTRA[@]+"${EXTRA[@]}"}"
+OVERRIDES=""
+[[ ${#EXTRA[@]} -eq 0 ]] || printf -v OVERRIDES '%q ' "${EXTRA[@]}"
 
 QSUB=(qsub -terse -t "1-$N" -N "$NAME" -o "$LOGS" -e "$LOGS" -l "h_rt=$RUNTIME")
 [[ -n "${LLM_TEAMS_SGE_PROJECT:-}" ]] && QSUB+=(-P "$LLM_TEAMS_SGE_PROJECT")
