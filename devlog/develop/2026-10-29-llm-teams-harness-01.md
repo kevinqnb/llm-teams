@@ -41,3 +41,25 @@ half-up.
 Note: M1 and M2 share one commit, and the M3 agent code sits in the M1/M2 commit, because several files
 (`cli.py`, `runner/run.py`, `agents/scripted.py`, `README.md`) span milestones and each commit had to
 import cleanly.
+
+## Session 2026-10-30
+
+### Prompts
+- Bring up the GPU smoke test on the cluster, redirecting caches off the full home quota and
+  choosing a GPU type that is both bf16-capable and actually schedulable for this project
+  (some GPUs advertised as free sit on private nodes).
+- After the first real-model output: fix the prompt, log why generations stop, stop resumed
+  runs from mixing mock and real episodes, delete the mixed directories, and rerun the smoke test.
+
+### Implemented
+The first run on real hardware exposed three harness problems, all fixed: an ambiguous
+"which agents you can see" prompt line (agent IDs read as choices), replies that were too
+verbose to reach a final answer within the token cap, and resume reusing a mock run directory.
+Generations now log `finish_reason`; manifests record the backend and model id, and resuming
+across backends raises. Job submission itself needed environment work (cache locations, CUDA
+toolkit and library paths for FlashInfer), documented in the private build note rather than
+hard-coded. 86 tests pass without a GPU; a rerun of the smoke test is queued.
+
+### Commits
+- 1d401d5 fix: submit.sh passed a stray empty argument when no overrides were given
+- bbf3383 fix: first real-model smoke run (verbose replies, ambiguous visibility line, mixed run dirs)
