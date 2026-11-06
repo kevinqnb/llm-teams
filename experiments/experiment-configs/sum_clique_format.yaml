@@ -20,5 +20,5 @@ seed: 0
 episodes_per_batch: 64
 sweep:
   comms.message_format: [free, structured]
-  dataset.n: [4, 8, 16]
+  dataset.n: [20]
   comms.message_graph.p: [0.25, 0.5, 0.75, 1.0]
