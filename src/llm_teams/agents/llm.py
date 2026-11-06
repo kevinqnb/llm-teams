@@ -5,9 +5,10 @@ from __future__ import annotations
 import numpy as np
 
 from llm_teams.agents.base import AGENTS, Agent
-from llm_teams.agents.parse import parse_answer
+from llm_teams.agents.parse import parse_answer, parse_message_token
 from llm_teams.agents.prompts import PromptTemplates, load_prompts
 from llm_teams.agents.view import AgentView
+from llm_teams.comms.notes import MESSAGE_TOKENS
 from llm_teams.config import ExperimentConfig
 from llm_teams.types import GenerationRequest, GenerationResult, ParsedAction
 
@@ -44,6 +45,8 @@ class LLMAgent(Agent):
         return GenerationRequest(self._messages("discussion", view))
 
     def parse_message(self, view: AgentView, result: GenerationResult) -> str:
+        if view.message_format == "structured":
+            return parse_message_token(result.content, MESSAGE_TOKENS) or ""  # "" = invalid
         return result.content.strip() or "(no message)"  # reasoning is never posted
 
 

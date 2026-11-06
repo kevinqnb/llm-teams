@@ -60,6 +60,8 @@ class CommsConfig(BaseModel):
     planning_rounds: int = 0
     max_message_tokens: int = 200
     reveal_group: bool = True
+    # free: any text; structured: only "I will raise" / "I will lower" / "I will hold"
+    message_format: Literal["free", "structured"] = "free"
 
 
 class AgentsConfig(BaseModel):
@@ -180,7 +182,10 @@ def expand_sweep(raw: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def condition_hash(cfg: ExperimentConfig) -> str:
-    blob = json.dumps(cfg.model_dump(mode="json", exclude={"sweep"}), sort_keys=True)
+    dump = cfg.model_dump(mode="json", exclude={"sweep"})
+    if dump["comms"]["message_format"] == "free":
+        del dump["comms"]["message_format"]  # keep hashes of pre-existing conditions stable
+    blob = json.dumps(dump, sort_keys=True)
     return hashlib.sha1(blob.encode()).hexdigest()[:8]
 
 

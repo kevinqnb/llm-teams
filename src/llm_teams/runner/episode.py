@@ -18,6 +18,7 @@ from llm_teams.agents.base import Agent
 from llm_teams.agents.view import AgentView, EpisodeState, ViewConfig, build_view
 from llm_teams.comms.generators import build_graph
 from llm_teams.comms.graph import CommGraph
+from llm_teams.comms.notes import STRUCTURED_TEXTS
 from llm_teams.config import ExperimentConfig
 from llm_teams.seeding import derive_rng, derive_seed
 from llm_teams.tasks.base import Task
@@ -65,12 +66,13 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         reveal_group=comms.reveal_group,
         action_history=comms.action_graph.action_history,
         notes_history=comms.message_graph.notes_history,
+        message_format=comms.message_format,
         max_turns=cfg.episode.max_turns,
     )
     task.reset(spec.instance, derive_rng(seed, ep, "task"))
     state = EpisodeState(n=n, task=task)
     out = EpisodeOutput(episode={})
-    tokens = invalid = n_messages = 0
+    tokens = invalid = n_messages = invalid_messages = 0
     ref = task.reference_solution() or {}
 
     def make_graphs(turn: int) -> None:
@@ -106,7 +108,7 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         })
 
     def discuss(phase: str, turn: int, rnd: int):
-        nonlocal n_messages
+        nonlocal n_messages, invalid_messages
         group = talkers()
         calls: dict[int, GenerationRequest | DirectAction] = {}
         views: dict[int, AgentView] = {}
@@ -120,9 +122,13 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         results = yield from _gather(calls)
         for i, res in results.items():  # simultaneous: posted only after all are generated
             text = agents[i].parse_message(views[i], res).strip()
-            state.noteboard.post(turn, rnd, i, text)
-            n_messages += 1
-            log_gen(calls[i], res, text, None)  # type: ignore[arg-type]
+            ok = comms.message_format == "free" or text in STRUCTURED_TEXTS
+            if ok:
+                state.noteboard.post(turn, rnd, i, text)
+                n_messages += 1
+            else:  # structured mode: off-vocabulary output is dropped, never posted
+                invalid_messages += 1
+            log_gen(calls[i], res, text, None if comms.message_format == "free" else ok)  # type: ignore[arg-type]
 
     # ---- optional planning discussion before turn 1
     make_graphs(0)
@@ -214,6 +220,7 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         "realized_message_graph": _graph_meta(state.message_graph),
         "success": success, "turns": turns_done, "censored": not success,
         **ref, "total_tokens": tokens, "total_messages": n_messages, "invalid_count": invalid,
+        "invalid_messages": invalid_messages, "message_format": comms.message_format,
         "clique_members": (state.message_graph.meta.get("members") or []),
         "graphs_turn1": graphs_turn1, "agents_type": cfg.agents.type,
     }

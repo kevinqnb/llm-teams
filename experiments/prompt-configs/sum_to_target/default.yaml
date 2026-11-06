@@ -30,7 +30,7 @@ macros: |
   You cannot see any other agent's choices.
   {% endif %}
   {% if view.notes %}
-  Messages from your group:
+  {{ "Signals" if view.message_format == "structured" else "Messages" }} from your group:
   {% for note in view.notes %}
   - Agent {{ note.author }} (after turn {{ note.after_turn }}): {{ note.text }}
   {% endfor %}
@@ -56,7 +56,7 @@ system: |
   {% if view.group.members %}
 
   Communication: you are in a group with {{ view.group.members | reject("equalto", view.self_id) | join(", ") }}
-  and can exchange short messages with them{% if view.group.outside %}; the other {{ view.group.outside }} {{ "agent is" if view.group.outside == 1 else "agents are" }} outside your group and cannot be reached{% endif %}.
+  and can exchange {{ "one-word signals" if view.message_format == "structured" else "short messages" }} with them{% if view.group.outside %}; the other {{ view.group.outside }} {{ "agent is" if view.group.outside == 1 else "agents are" }} outside your group and cannot be reached{% endif %}.
   Messages are written after each turn's feedback.
   {% else %}
 
@@ -80,9 +80,20 @@ discussion: |
   {{ history(view) }}
   {{ shared(view) }}
   Turn {{ view.turn }} is over{% if view.turn == 0 %} (this is the planning phase before turn 1){% endif %}.
+  {% if view.message_format == "structured" %}
+  Tell your group {{ view.group.members | reject("equalto", view.self_id) | join(", ") if view.group else "" }}
+  what you will do next turn relative to your last choice. You may only send one of these
+  three signals, and no other text:
+  MESSAGE: raise   (you will switch from 0 to 1)
+  MESSAGE: lower   (you will switch from 1 to 0)
+  MESSAGE: hold    (you will keep the same choice)
+  Finish with exactly one such line. Other agents only see the signal, not your reasoning.
+  Do not write an ANSWER line.
+  {% else %}
   Write a short message (at most a few sentences) to your group {{ view.group.members | reject("equalto", view.self_id) | join(", ") if view.group else "" }}
   to help the team reach the target faster, for example a plan for the next turn. Other
   agents only see this message, not your reasoning. Do not write an ANSWER line.
+  {% endif %}
 
 retry: |
   Your last reply did not end with a valid answer. Reply again and finish with a final line

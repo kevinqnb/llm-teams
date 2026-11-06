@@ -17,3 +17,12 @@ def parse_answer(content: str, allowed: set[int]) -> int | None:
     except ValueError:
         return None
     return value if value in allowed else None
+
+
+_MESSAGE = re.compile(r"message\s*:\s*[*_`\"'\s]*([a-z]+)", re.IGNORECASE)
+
+
+def parse_message_token(content: str, tokens: dict[str, str]) -> str | None:
+    """Canonical text for the last `MESSAGE: x` in `content`, or None if absent or not a token."""
+    matches = _MESSAGE.findall(content)
+    return tokens.get(matches[-1].lower()) if matches else None

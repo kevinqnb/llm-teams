@@ -34,6 +34,7 @@ class ViewConfig:
     reveal_group: bool = True
     action_history: str = "last"
     notes_history: str = "all"
+    message_format: str = "free"
     max_turns: int = 20
 
 
@@ -53,6 +54,7 @@ class AgentView:
     message_neighbors: list[int]
     group: dict[str, Any] | None  # {"members": [...], "outside": k} or {"members": []} if isolated
     notes: list[dict[str, Any]]
+    message_format: str = "free"  # "free" | "structured"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -109,4 +111,5 @@ def build_view(
         message_neighbors=m_nb,
         group=group,
         notes=[n.to_dict() for n in notes],
+        message_format=cfg.message_format,
     )

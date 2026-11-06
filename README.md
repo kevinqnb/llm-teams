@@ -44,6 +44,14 @@ clique-mates read; everyone else makes no discussion calls. Notes are written to
 `sum_clique_controller.yaml` is the scripted reference (perfectly coordinated clique, random outsiders)
 and runs without a GPU. `sum_clique_smoke.yaml` is the GPU smoke test (p ∈ {0.5, 1.0}).
 
+### Message format
+
+`comms.message_format` is `free` (default; any text) or `structured`, where agents may only post
+`I will raise`, `I will lower` or `I will hold` (intent for the next turn). In structured mode the
+agent replies `MESSAGE: raise|lower|hold`; anything else is dropped (not posted) and counted in
+the episode's `invalid_messages`. Sweepable: `comms.message_format: [free, structured]`. See
+`experiments/experiment-configs/sum_clique_structured_smoke.yaml`.
+
 ### Sweeps and cluster submission
 
 A config's `sweep:` block is a cartesian product over dotted config keys. Inspect it with
