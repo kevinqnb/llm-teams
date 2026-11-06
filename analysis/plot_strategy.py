@@ -48,23 +48,32 @@ def oracle_trajectory(n: int, target: int, max_turns: int = 30) -> list[int]:
     return out
 
 
-def plot_trajectories(run: Run, eps: pd.DataFrame, n_episodes: int = 6, name: str = "trajectories",
-                      outdir: Path | None = None):
+def plot_trajectories(run: Run, eps: pd.DataFrame, name: str = "trajectories", outdir: Path | None = None,
+                      p_message: float | None = None, ncols: int = 5):
+    """One panel per game, in game order: team sum per turn vs the oracle bisection and the target.
+
+    With p_message set, only games of that message-graph probability are drawn.
+    """
+    if p_message is not None:
+        eps = eps[eps["p_message"] == p_message]
     eps = eps.set_index(["condition_hash", "episode_id"])
-    picked = []
-    for h, e, sums, _, _ in trajectories(run):
-        picked.append((h, e, sums))
-        if len(picked) == n_episodes:
-            break
-    fig, axes = plt.subplots(1, len(picked), figsize=(3.2 * len(picked), 2.8), squeeze=False,
+    sums_by_game = {(h, e): sums for h, e, sums, _, _ in trajectories(run) if (h, e) in eps.index}
+    games = sorted(sums_by_game, key=lambda k: (k[1], k[0]))
+    ncols = min(ncols, len(games))
+    nrows = -(-len(games) // ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(3.2 * ncols, 2.8 * nrows), squeeze=False,
                              layout="constrained")
-    for ax, (h, e, sums) in zip(axes[0], picked, strict=True):
+    for ax in axes.flat[len(games):]:
+        ax.set_visible(False)
+    for ax, (h, e) in zip(axes.flat, games, strict=False):
         row = eps.loc[(h, e)]
+        sums = sums_by_game[(h, e)]
         ax.plot(range(1, len(sums) + 1), sums, "o-", color=PALETTE[0], label="agents")
         orc = oracle_trajectory(int(row["n"]), int(row["target"]))
         ax.plot(range(1, len(orc) + 1), orc, "s--", color="#666", label="oracle")
         ax.axhline(row["target"], color=PALETTE[1], lw=1, label="target")
-        ax.set(title=f"ep {e} ({row['label']})", xlabel="turn", ylabel="sum")
+        ax.set(title=f"Game {e + 1}", xlabel="turn", ylabel="sum")
+        ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     axes[0][0].legend(fontsize=7, frameon=False)
     return save(fig, name, outdir)
 
@@ -77,7 +86,8 @@ def main() -> None:
     run = load_experiment(a.experiment)
     eps = episode_features(run)
     plot_labels(eps, outdir=Path(a.out))
-    plot_trajectories(run, eps, outdir=Path(a.out))
+    for p in sorted(eps["p_message"].dropna().unique()):
+        plot_trajectories(run, eps, name=f"trajectories_p{p:g}", outdir=Path(a.out), p_message=p)
 
 
 if __name__ == "__main__":

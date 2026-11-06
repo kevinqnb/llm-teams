@@ -58,7 +58,9 @@ def main() -> None:
         plot_performance.plot_success_at_k(sub, f"{tag}_success_at_k", out)
         plot_performance.plot_turns_vs_x(sub, base, f"{tag}_turns", out)
         plot_strategy.plot_labels(sub, f"{tag}_strategy_labels", out)
-        plot_strategy.plot_trajectories(run, sub, name=f"{tag}_trajectories", outdir=out)
+        for p in sorted(sub["p_message"].dropna().unique()):
+            plot_strategy.plot_trajectories(run, sub, name=f"{tag}_trajectories_p{p:g}", outdir=out,
+                                            p_message=p)
         if sub["m"].nunique() > 1:
             ctrl = load_experiment(a.controller).episodes if a.controller else None
             plot_clique.plot_turns_vs_m(sub, ctrl, f"{tag}_turns_vs_m", out)
