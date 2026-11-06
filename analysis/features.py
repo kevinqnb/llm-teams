@@ -17,6 +17,35 @@ def trajectories(run: Run):
                [list(a) for a in g["actions"]])
 
 
+def intent_stats(run: Run) -> pd.DataFrame:
+    """Per episode: how often structured raise/lower/hold messages were coherent and followed.
+
+    Only messages posted after a turn that has a next turn are scored. Empty for free-text runs.
+    """
+    from llm_teams.comms.notes import MESSAGE_TOKENS
+
+    canon = {v: k for k, v in MESSAGE_TOKENS.items()}
+    g = run.generations
+    cols = ["condition_hash", "episode_id", "n_intents", "intent_coherent_rate", "intent_follow_rate"]
+    if g.empty or run.turns.empty:
+        return pd.DataFrame(columns=cols)
+    acts = {(h, e, t): a for h, e, t, a in zip(
+        run.turns["condition_hash"], run.turns["episode_id"], run.turns["turn"], run.turns["actions"],
+        strict=True)}
+    d = g[(g["phase"] == "discussion") & g["parsed"].isin(canon)]
+    rows: dict[tuple, list[tuple[bool, bool]]] = {}
+    for h, e, t, ag, text in zip(d["condition_hash"], d["episode_id"], d["turn"], d["agent"],
+                                 d["parsed"], strict=True):
+        prev, nxt = acts.get((h, e, t)), acts.get((h, e, t + 1))
+        if prev is None or nxt is None:
+            continue
+        rows.setdefault((h, e), []).append(M.intent_outcome(canon[text], prev[ag], nxt[ag]))
+    out = [{"condition_hash": h, "episode_id": e, "n_intents": len(v),
+            "intent_coherent_rate": float(np.mean([c for c, _ in v])),
+            "intent_follow_rate": float(np.mean([f for _, f in v]))} for (h, e), v in rows.items()]
+    return pd.DataFrame(out, columns=cols)
+
+
 def episode_features(run: Run, th: M.Thresholds = M.DEFAULT_THRESHOLDS) -> pd.DataFrame:
     """Episodes table plus consistency, bisection score, info gain, steps, label, etc."""
     eps = run.episodes.set_index(["condition_hash", "episode_id"], drop=False)
@@ -51,5 +80,6 @@ def episode_features(run: Run, th: M.Thresholds = M.DEFAULT_THRESHOLDS) -> pd.Da
         rows.append(row)
     feats = pd.DataFrame(rows)
     out = run.episodes.merge(feats, on=["condition_hash", "episode_id"], how="left")
+    out = out.merge(intent_stats(run), on=["condition_hash", "episode_id"], how="left")
     out["normalized_turns"] = out["turns"] / out["optimal_turns"]
     return out

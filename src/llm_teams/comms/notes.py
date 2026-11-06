@@ -7,7 +7,6 @@ from typing import Any
 
 from llm_teams.comms.graph import CommGraph
 
-
 # structured message format: token -> canonical text posted on the board
 MESSAGE_TOKENS: dict[str, str] = {
     "raise": "I will raise",

@@ -47,7 +47,7 @@ class LLMAgent(Agent):
     def parse_message(self, view: AgentView, result: GenerationResult) -> str:
         if view.message_format == "structured":
             return parse_message_token(result.content, MESSAGE_TOKENS) or ""  # "" = invalid
-        return result.content.strip() or "(no message)"  # reasoning is never posted
+        return result.content.strip()  # reasoning is never posted; "" = empty reply, dropped by the harness
 
 
 @AGENTS.register("llm")

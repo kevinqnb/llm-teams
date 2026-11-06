@@ -337,6 +337,20 @@ def tag_strategies(text: str) -> set[str]:
     return {k for k, pat in STRATEGY_PATTERNS.items() if re.search(pat, text, re.I)}
 
 
+def intent_outcome(intent: str, prev: int, nxt: int) -> tuple[bool, bool]:
+    """(coherent, followed) for a structured message sent after a turn.
+
+    intent is 'raise' | 'lower' | 'hold'; prev/nxt are the sender's actions on the turns before and
+    after the message. coherent: the statement was possible given prev (cannot raise from 1 or
+    lower from 0). followed: nxt is what the statement said it would be.
+    """
+    if intent == "raise":
+        return prev == 0, nxt == 1
+    if intent == "lower":
+        return prev == 1, nxt == 0
+    return True, nxt == prev
+
+
 def stated_vs_enacted(stated: set[str], enacted: str) -> bool | None:
     """True/False if a stated strategy with a comparable enacted label exists, else None."""
     comparable = {STATED_TO_ENACTED[s] for s in stated if s in STATED_TO_ENACTED}

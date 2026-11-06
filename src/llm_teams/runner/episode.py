@@ -122,13 +122,14 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         results = yield from _gather(calls)
         for i, res in results.items():  # simultaneous: posted only after all are generated
             text = agents[i].parse_message(views[i], res).strip()
-            ok = comms.message_format == "free" or text in STRUCTURED_TEXTS
+            free = comms.message_format == "free"
+            ok = bool(text) and (free or text in STRUCTURED_TEXTS)
             if ok:
                 state.noteboard.post(turn, rnd, i, text)
                 n_messages += 1
-            else:  # structured mode: off-vocabulary output is dropped, never posted
+            else:  # empty reply (both formats) or off-vocabulary output (structured): never posted
                 invalid_messages += 1
-            log_gen(calls[i], res, text, None if comms.message_format == "free" else ok)  # type: ignore[arg-type]
+            log_gen(calls[i], res, text, None if (free and ok) else ok)  # type: ignore[arg-type]
 
     # ---- optional planning discussion before turn 1
     make_graphs(0)
