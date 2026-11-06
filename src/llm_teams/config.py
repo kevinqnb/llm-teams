@@ -62,6 +62,19 @@ class CommsConfig(BaseModel):
     reveal_group: bool = True
     # free: any text; structured: only "I will raise" / "I will lower" / "I will hold"
     message_format: Literal["free", "structured"] = "free"
+    # simultaneous: everyone writes at once and sees nothing from the current round.
+    # sequential: one speaker at a time in a random order (reshuffled every turn and round);
+    # each speaker sees what earlier speakers of the same round posted.
+    discussion_order: Literal["simultaneous", "sequential"] = "simultaneous"
+    # named: readers see each note with its author. aggregate: readers see only counts per signal
+    # ("2 raised, 1 lowered, 0 held"); needs structured messages, since free text cannot be counted.
+    board_view: Literal["named", "aggregate"] = "named"
+
+    @model_validator(mode="after")
+    def _aggregate_needs_structured(self) -> CommsConfig:
+        if self.board_view == "aggregate" and self.message_format != "structured":
+            raise ValueError("comms.board_view=aggregate requires comms.message_format=structured")
+        return self
 
 
 class AgentsConfig(BaseModel):
@@ -183,8 +196,11 @@ def expand_sweep(raw: dict[str, Any]) -> list[dict[str, Any]]:
 
 def condition_hash(cfg: ExperimentConfig) -> str:
     dump = cfg.model_dump(mode="json", exclude={"sweep"})
-    if dump["comms"]["message_format"] == "free":
-        del dump["comms"]["message_format"]  # keep hashes of pre-existing conditions stable
+    # drop settings at their defaults so hashes of pre-existing conditions stay stable
+    for key, default in (("message_format", "free"), ("discussion_order", "simultaneous"),
+                         ("board_view", "named")):
+        if dump["comms"][key] == default:
+            del dump["comms"][key]
     blob = json.dumps(dump, sort_keys=True)
     return hashlib.sha1(blob.encode()).hexdigest()[:8]
 

@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from llm_teams.comms.graph import CommGraph
-from llm_teams.comms.notes import NoteBoard
+from llm_teams.comms.notes import NoteBoard, tally
 from llm_teams.tasks.base import Task
 
 
@@ -35,6 +35,8 @@ class ViewConfig:
     action_history: str = "last"
     notes_history: str = "all"
     message_format: str = "free"
+    board_view: str = "named"
+    discussion_order: str = "simultaneous"
     max_turns: int = 20
 
 
@@ -55,6 +57,13 @@ class AgentView:
     group: dict[str, Any] | None  # {"members": [...], "outside": k} or {"members": []} if isolated
     notes: list[dict[str, Any]]
     message_format: str = "free"  # "free" | "structured"
+    discussion_order: str = "simultaneous"  # "simultaneous" | "sequential"
+    board_view: str = "named"  # "named" (notes) | "aggregate" (tallies only; notes stays empty)
+    tallies: list[dict[str, Any]] = field(default_factory=list)  # aggregate: counts per turn
+    # sequential discussion only: {"position", "total", "passed", "posted"} -- this agent is
+    # speaker `position` of `total` group members; `passed` earlier group members have had their
+    # turn this round and `posted` of them actually posted a valid note.
+    progress: dict[str, int] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -67,7 +76,11 @@ def build_view(
     phase: str,
     turn: int,
     round: int = 0,
+    slot: int = 0,
+    order: list[int] | None = None,
 ) -> AgentView:
+    """`slot`/`order` are the speaker's position and the full speaking order in a sequential
+    discussion round; simultaneous discussion and the act phase leave them at the defaults."""
     assert state.action_graph is not None and state.message_graph is not None
     completed = turn - 1 if phase == "act" else turn
     done = range(1, completed + 1)
@@ -91,10 +104,20 @@ def build_view(
         agent_id,
         state.message_graph,
         # act at turn k reads everything posted after turns < k; (k, 0) sorts before (k, 1).
-        # discussion after turn k, round r reads rounds < r of turn k and all earlier turns.
-        before=(turn, round),
+        # discussion after turn k, round r reads rounds < r of turn k and all earlier turns, plus
+        # (sequential only) notes of the same round from speakers with a smaller slot.
+        before=(turn, round, slot),
         history=cfg.notes_history,
     )
+
+    progress = None
+    if order is not None:
+        earlier = [j for j in order[:order.index(agent_id)] if j in m_nb]
+        posted = sum(1 for nt in notes
+                     if (nt.after_turn, nt.round) == (turn, round) and nt.author in earlier)
+        progress = {"position": len(earlier) + 1, "total": len(m_nb) + 1,
+                    "passed": len(earlier), "posted": posted}
+    aggregate = cfg.board_view == "aggregate"
 
     return AgentView(
         phase=phase,
@@ -110,6 +133,10 @@ def build_view(
         visible_actions=visible,
         message_neighbors=m_nb,
         group=group,
-        notes=[n.to_dict() for n in notes],
+        notes=[] if aggregate else [n.to_dict() for n in notes],  # aggregate never exposes authors
         message_format=cfg.message_format,
+        discussion_order=cfg.discussion_order,
+        board_view=cfg.board_view,
+        tallies=tally(notes) if aggregate else [],
+        progress=progress,
     )

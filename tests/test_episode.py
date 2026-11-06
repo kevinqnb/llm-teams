@@ -76,16 +76,19 @@ def test_planning_rounds_happen_before_turn_one():
 # --------------------------------------------------------- information access
 
 
-def test_views_never_leak():
+@pytest.mark.parametrize("order", ["simultaneous", "sequential"])
+def test_views_never_leak(order):
     cfg = {
         "episode": {"max_turns": 4},
         "comms": {
             "action_graph": {"generator": "random_k", "k": 1, "resample": "fixed"},
             "message_graph": CLIQUE,
             "discussion_rounds": 2,
+            "discussion_order": order,
         },
     }
     out, reqs = run(cfg, inst(n=6, target=5))
+    speaking = {t["turn"]: t["speaking_order"] for t in out.turns if "speaking_order" in t}
     actions = {t["turn"]: t["actions"] for t in out.turns}
     members = set(out.episode["clique_members"])
     for r in reqs:
@@ -109,13 +112,23 @@ def test_views_never_leak():
             same_turn_ok = phase == "discussion" and note["after_turn"] == turn
             assert note["after_turn"] < turn or same_turn_ok
             if phase == "discussion" and note["after_turn"] == turn:
-                assert note["round"] < r.meta["round"]  # never same-round messages
+                if note["round"] == r.meta["round"]:
+                    # same-round notes exist only in sequential mode, and only from earlier speakers
+                    assert order == "sequential"
+                    spoke_before = speaking[turn][note["round"] - 1][:r.meta["slot"]]
+                    assert note["author"] in spoke_before or note["author"] == me
+                    assert note["slot"] < r.meta["slot"]
+                else:
+                    assert note["round"] < r.meta["round"]  # never later rounds
         if me not in members:
             assert v["notes"] == [] and v["message_neighbors"] == []
-    # round 1 sees no same-turn notes; round 2 does
+    # round 1 sees no earlier-round notes (sequential: only earlier speakers of its own round);
+    # round 2 does see round-1 notes
     r1 = [view_of(r) for r in reqs if r.meta["phase"] == "discussion" and r.meta["round"] == 1]
     r2 = [view_of(r) for r in reqs if r.meta["phase"] == "discussion" and r.meta["round"] == 2]
-    assert all(all(n["after_turn"] < v["turn"] for n in v["notes"]) for v in r1)
+    assert all(all(n["after_turn"] < v["turn"] or n["round"] == 1 for n in v["notes"]) for v in r1)
+    if order == "simultaneous":
+        assert all(all(n["after_turn"] < v["turn"] for n in v["notes"]) for v in r1)
     assert any(any(n["after_turn"] == v["turn"] for n in v["notes"]) for v in r2)
 
 

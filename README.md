@@ -52,6 +52,22 @@ agent replies with exactly one word (`raise|lower|hold`; `MESSAGE: <word>` is al
 the episode's `invalid_messages`. Sweepable: `comms.message_format: [free, structured]`. See
 `experiments/experiment-configs/sum_clique_structured_smoke.yaml`.
 
+### Sequential discussion and aggregate board view
+
+`comms.discussion_order` is `simultaneous` (default: everyone writes at once and sees nothing from
+the current round) or `sequential`: speakers go one at a time in a random order that is reshuffled
+every turn and round (deterministic given the seed; logged as `speaking_order` in `turns.jsonl`).
+Each speaker sees what earlier speakers of the same round posted, and is told its position
+("speaker 2 of 3") and how many earlier speakers actually posted. Notes carry a `slot` (0 for
+simultaneous). Sequential discussion makes one backend call per speaker, so episodes take longer.
+
+`comms.board_view` is `named` (default: each note with its author) or `aggregate`: readers only see
+counts per turn ("After turn 2: 2 raise, 1 lower, 0 hold"), never authors, and the counts include their
+own signal. Aggregate requires `message_format: structured`. Both settings are sweepable and
+default-valued settings do not change condition hashes. See
+`experiments/experiment-configs/sum_clique_sequential_smoke.yaml` (order x format) and
+`sum_clique_aggregate_smoke.yaml` (named vs aggregate).
+
 ### Sweeps and cluster submission
 
 A config's `sweep:` block is a cartesian product over dotted config keys. Inspect it with

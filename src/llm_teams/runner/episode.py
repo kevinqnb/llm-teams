@@ -67,6 +67,8 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         action_history=comms.action_graph.action_history,
         notes_history=comms.message_graph.notes_history,
         message_format=comms.message_format,
+        board_view=comms.board_view,
+        discussion_order=comms.discussion_order,
         max_turns=cfg.episode.max_turns,
     )
     task.reset(spec.instance, derive_rng(seed, ep, "task"))
@@ -107,29 +109,41 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
             "latency": res.latency, "finish_reason": res.finish_reason,
         })
 
+    speaking_orders: dict[tuple[int, int], list[int]] = {}
+
     def discuss(phase: str, turn: int, rnd: int):
         nonlocal n_messages, invalid_messages
         group = talkers()
-        calls: dict[int, GenerationRequest | DirectAction] = {}
-        views: dict[int, AgentView] = {}
-        for i in group:
-            views[i] = build_view(i, state, vcfg, phase, turn, rnd)
-            req = agents[i].discussion_request(views[i])
-            if req is not None:
-                req = finalize(req, "discussion" if phase == "discuss" else "planning", i, turn, rnd, "")
-                req.max_tokens = comms.max_message_tokens
-                calls[i] = req
-        results = yield from _gather(calls)
-        for i, res in results.items():  # simultaneous: posted only after all are generated
-            text = agents[i].parse_message(views[i], res).strip()
-            free = comms.message_format == "free"
-            ok = bool(text) and (free or text in STRUCTURED_TEXTS)
-            if ok:
-                state.noteboard.post(turn, rnd, i, text)
-                n_messages += 1
-            else:  # empty reply (both formats) or off-vocabulary output (structured): never posted
-                invalid_messages += 1
-            log_gen(calls[i], res, text, None if (free and ok) else ok)  # type: ignore[arg-type]
+        sequential = comms.discussion_order == "sequential"
+        order: list[int] | None = None
+        if sequential:  # fresh deterministic shuffle per (turn, round), so no one is always first
+            order = [int(i) for i in derive_rng(seed, ep, "order", turn, rnd).permutation(group)]
+            speaking_orders[(turn, rnd)] = order
+        # simultaneous: one batch in which everyone writes blind; sequential: one speaker per batch
+        # and each view is built only after the previous speaker has posted
+        batches = [(slot, [i]) for slot, i in enumerate(order)] if order is not None else [(0, group)]
+        for slot, speakers in batches:
+            calls: dict[int, GenerationRequest | DirectAction] = {}
+            views: dict[int, AgentView] = {}
+            for i in speakers:
+                views[i] = build_view(i, state, vcfg, phase, turn, rnd, slot, order)
+                req = agents[i].discussion_request(views[i])
+                if req is not None:
+                    req = finalize(req, "discussion" if phase == "discuss" else "planning", i, turn, rnd, "")
+                    req.max_tokens = comms.max_message_tokens
+                    req.meta["slot"] = slot
+                    calls[i] = req
+            results = yield from _gather(calls)
+            for i, res in results.items():  # simultaneous: posted only after all are generated
+                text = agents[i].parse_message(views[i], res).strip()
+                free = comms.message_format == "free"
+                ok = bool(text) and (free or text in STRUCTURED_TEXTS)
+                if ok:
+                    state.noteboard.post(turn, rnd, i, text, slot)
+                    n_messages += 1
+                else:  # empty reply (both formats) or off-vocabulary output (structured): never posted
+                    invalid_messages += 1
+                log_gen(calls[i], res, text, None if (free and ok) else ok)  # type: ignore[arg-type]
 
     # ---- optional planning discussion before turn 1
     make_graphs(0)
@@ -208,6 +222,9 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         for r in range(1, comms.discussion_rounds + 1):
             yield from discuss("discuss", turn, r)
         row["n_messages_after"] = n_messages - before
+        if comms.discussion_order == "sequential":
+            row["speaking_order"] = [speaking_orders[(turn, r)]
+                                     for r in range(1, comms.discussion_rounds + 1)]
 
     ag, mg = comms.action_graph, comms.message_graph
     out.graphs = {"message_graph": state.message_graph}  # type: ignore[dict-item]
@@ -222,6 +239,7 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         "success": success, "turns": turns_done, "censored": not success,
         **ref, "total_tokens": tokens, "total_messages": n_messages, "invalid_count": invalid,
         "invalid_messages": invalid_messages, "message_format": comms.message_format,
+        "discussion_order": comms.discussion_order, "board_view": comms.board_view,
         "clique_members": (state.message_graph.meta.get("members") or []),
         "graphs_turn1": graphs_turn1, "agents_type": cfg.agents.type,
     }

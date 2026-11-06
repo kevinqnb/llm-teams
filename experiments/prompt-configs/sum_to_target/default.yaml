@@ -29,7 +29,14 @@ macros: |
   {% else %}
   You cannot see any other agent's choices.
   {% endif %}
-  {% if view.notes %}
+  {% if view.board_view == "aggregate" %}
+  {% if view.tallies %}
+  Signal counts from your group (they include your own signals; you are not told who sent which):
+  {% for t in view.tallies %}
+  - After turn {{ t.after_turn }}{{ " so far" if view.phase != "act" and t.after_turn == view.turn }}: {{ t.raised }} raise, {{ t.lowered }} lower, {{ t.held }} hold
+  {% endfor %}
+  {% endif %}
+  {% elif view.notes %}
   {{ "Signals" if view.message_format == "structured" else "Messages" }} from your group:
   {% for note in view.notes %}
   - Agent {{ note.author }} (after turn {{ note.after_turn }}): {{ note.text }}
@@ -57,7 +64,7 @@ system: |
 
   Communication: you are in a group with {{ view.group.members | reject("equalto", view.self_id) | join(", ") }}
   and can exchange {{ "one-word signals" if view.message_format == "structured" else "short messages" }} with them{% if view.group.outside %}; the other {{ view.group.outside }} {{ "agent is" if view.group.outside == 1 else "agents are" }} outside your group and cannot be reached{% endif %}.
-  Messages are written after each turn's feedback.
+  Messages are written after each turn's feedback{% if view.discussion_order == "sequential" %}, one agent at a time in a random order that changes every turn. When it is your turn to write you see what the agents before you wrote{% if view.board_view == "aggregate" %} (as counts, not who sent which){% endif %}{% endif %}.
   {% else %}
 
   Communication: you cannot send or receive messages.
@@ -80,6 +87,10 @@ discussion: |
   {{ history(view) }}
   {{ shared(view) }}
   Turn {{ view.turn }} is over{% if view.turn == 0 %} (this is the planning phase before turn 1){% endif %}.
+  {% if view.progress %}
+  You are speaker {{ view.progress.position }} of {{ view.progress.total }} in this round{% if view.progress.passed == 0 %}: no one has spoken yet.{% else %}: {{ view.progress.posted }} of the {{ view.progress.passed }} group {{ "member" if view.progress.passed == 1 else "members" }} before you posted.{% endif %}
+
+  {% endif %}
   Think very briefly (one or two sentences), then reply.
   {% if view.message_format == "structured" %}
   Tell your group {{ view.group.members | reject("equalto", view.self_id) | join(", ") if view.group else "" }}

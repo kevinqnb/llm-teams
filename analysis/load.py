@@ -53,6 +53,10 @@ def load_run(run_dir: str | Path) -> Run:
             eps[k] = v
         if "message_format" not in eps:  # runs from before the setting existed
             eps["message_format"] = "free"
+        if "discussion_order" not in eps:
+            eps["discussion_order"] = "simultaneous"
+        if "board_view" not in eps:
+            eps["board_view"] = "named"
         if "invalid_messages" not in eps:
             eps["invalid_messages"] = 0
     return Run(run_dir, cfg, eps, pd.DataFrame(_jsonl(run_dir / "turns.jsonl")),

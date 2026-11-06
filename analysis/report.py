@@ -16,8 +16,8 @@ from analysis.plot_strategy import label_table
 
 def performance_table(eps: pd.DataFrame) -> pd.DataFrame:
     xcol = x_column(eps)
-    keys = ["agents_type", "message_format", "n", xcol] if "message_format" in eps else \
-        ["agents_type", "n", xcol]
+    keys = ["agents_type", "message_format", "discussion_order", "board_view", "n", xcol]
+    keys = [k for k in keys if k in eps]
     return eps.groupby(list(dict.fromkeys(keys))).agg(
         episodes=("success", "size"), success_rate=("success", "mean"), mean_turns=("turns", "mean"),
         mean_turns_success=("turns", lambda s: s[eps.loc[s.index, "success"]].mean()),
@@ -47,11 +47,13 @@ def main() -> None:
     eps.drop(columns=["graphs_turn1"], errors="ignore").to_csv(out / f"{name}_episode_features.csv",
                                                                index=False)
     base = load_experiment(a.baselines).episodes if a.baselines else None
-    # one set of tables/figures per message format, so free and structured are never pooled
-    formats = sorted(eps["message_format"].unique())
-    for fmt in formats:
-        sub = eps[eps["message_format"] == fmt]
-        tag = f"{name}_{fmt}" if len(formats) > 1 else name
+    # one set of tables/figures per communication setting, so e.g. free and structured, or
+    # simultaneous and sequential, are never pooled
+    split = [k for k in ("message_format", "discussion_order", "board_view") if eps[k].nunique() > 1]
+    groups = [(v if isinstance(v, tuple) else (v,), sub) for v, sub in eps.groupby(split)] \
+        if split else [((), eps)]
+    for vals, sub in groups:
+        tag = "_".join([name, *map(str, vals)])
         label_table(sub).to_csv(out / f"{tag}_strategy_labels.csv")
         plot_performance.plot_success_at_k(sub, f"{tag}_success_at_k", out)
         plot_performance.plot_turns_vs_x(sub, base, f"{tag}_turns", out)
