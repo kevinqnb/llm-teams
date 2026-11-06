@@ -120,3 +120,19 @@ def test_performance_table_splits_formats():
             "intent_follow_rate": float("nan")}
     eps = pd.DataFrame([{**base, "message_format": "free"}, {**base, "message_format": "structured"}])
     assert sorted(performance_table(eps)["message_format"]) == ["free", "structured"]
+
+
+def test_vllm_sampling_uses_soft_thinking_budget():
+    pytest.importorskip("vllm")
+    from llm_teams.backends.vllm_backend import FORCED_END_SLACK, VISIBLE_TOKENS, VLLMBackend
+    from llm_teams.config import ModelConfig
+    from llm_teams.types import GenerationRequest
+
+    b = VLLMBackend.__new__(VLLMBackend)
+    b.cfg = ModelConfig(enable_thinking=True, thinking_sampling={
+        "temperature": 0.6, "max_tokens": 4096, "thinking_token_budget": 100})
+    sp = b._sampling(GenerationRequest([], max_tokens=None))
+    assert sp.thinking_token_budget == 100 and sp.max_tokens == 100 + VISIBLE_TOKENS + FORCED_END_SLACK
+    assert b._sampling(GenerationRequest([], max_tokens=200)).max_tokens == 100 + 200 + FORCED_END_SLACK
+    b.cfg = ModelConfig(enable_thinking=True, thinking_sampling={"max_tokens": 4096})  # old behaviour
+    assert b._sampling(GenerationRequest([], max_tokens=200)).max_tokens == 4096 + 200
