@@ -30,6 +30,7 @@ class GenerationRequest:
     request_id: str = ""
     seed: int = 0
     max_tokens: int | None = None
+    thinking: bool | None = None  # None = backend default (model.enable_thinking)
     meta: dict[str, Any] = field(default_factory=dict)
 
 

@@ -104,7 +104,8 @@ def run_episode(spec: EpisodeSpec) -> EpisodeGen:
         out.generations.append({
             "request_id": req.request_id, "condition_hash": spec.cond_hash, "episode_id": ep,
             **req.meta, "messages": req.messages, "raw_output": res.text,
-            "reasoning": res.reasoning, "content": res.content, "parsed": parsed, "valid": valid,
+            "thinking": req.thinking, "reasoning": res.reasoning, "content": res.content,
+            "parsed": parsed, "valid": valid,
             "prompt_tokens": res.prompt_tokens, "completion_tokens": res.completion_tokens,
             "latency": res.latency, "finish_reason": res.finish_reason,
         })

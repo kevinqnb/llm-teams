@@ -68,6 +68,14 @@ default-valued settings do not change condition hashes. See
 `experiments/experiment-configs/sum_clique_sequential_smoke.yaml` (order x format) and
 `sum_clique_aggregate_smoke.yaml` (named vs aggregate).
 
+### Thinking per phase
+
+With `enable_thinking` on, every call thinks. `agents.thinking_phases: [discussion]` (llm agents) makes
+only the message-writing calls think and leaves action calls (and their retry) with thinking off; the
+default is unset, meaning the model's global setting. The thinking length is capped softly by
+`thinking_sampling.thinking_token_budget` (needs `engine_kwargs.reasoning_parser: qwen3`): vLLM closes the
+think block at the budget so the model still answers. Each generation row logs `thinking`.
+
 ### Sweeps and cluster submission
 
 A config's `sweep:` block is a cartesian product over dotted config keys. Inspect it with
