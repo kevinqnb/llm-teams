@@ -1,0 +1,24 @@
+{
+  "git_commit": "1ef4073c7f5912ea9d6260394995a0a99df911a8",
+  "git_dirty": true,
+  "versions": {
+    "llm-teams": "0.1.0",
+    "vllm": "0.32.0",
+    "torch": "2.13.0",
+    "transformers": "5.19.0"
+  },
+  "backend": "vllm",
+  "model_id": "Qwen/Qwen3.5-4B",
+  "python": "3.12.5",
+  "hostname": "scc-502",
+  "gpu": "0",
+  "start": 1793983657.8098466,
+  "end": 1793983691.465048,
+  "argv": [
+    "/projectnb/mcnet/kevin/llm-teams/.venv/bin/llm-teams",
+    "run",
+    "/projectnb/mcnet/kevin/llm-teams/experiments/experiment-configs/sum_clique_seqagg_p0.yaml",
+    "--shard",
+    "1/1"
+  ]
+}

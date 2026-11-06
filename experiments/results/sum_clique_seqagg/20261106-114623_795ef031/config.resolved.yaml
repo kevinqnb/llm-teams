@@ -1,0 +1,76 @@
+agents:
+  know_id: true
+  know_n: true
+  memory: structured
+  thinking_phases:
+  - discussion
+  type: llm
+comms:
+  action_graph:
+    action_history: last
+    generator: empty
+    notes_history: all
+    params: {}
+    resample: fixed
+  board_view: aggregate
+  discussion_order: sequential
+  discussion_rounds: 1
+  max_message_tokens: 200
+  message_format: structured
+  message_graph:
+    action_history: last
+    generator: clique
+    notes_history: all
+    params:
+      p: 0.0
+    resample: fixed
+  planning_rounds: 0
+  reveal_group: true
+dataset:
+  feedback: direction
+  n: 20
+  name: sum_to_target_n20_g10
+  num_episodes: 10
+  seed: 0
+  target_dist: uniform
+episode:
+  invalid_policy: random
+  max_turns: 20
+episodes_per_batch: 64
+model:
+  backend: vllm
+  enable_thinking: true
+  engine_kwargs:
+    dtype: bfloat16
+    gpu_memory_utilization: 0.85
+    max_model_len: 16384
+    reasoning_config:
+      reasoning_end_str: '
+
+
+        My thinking time is up. I must stop thinking now and give my single final
+        answer: exactly one word, raise, lower or hold.
+
+        </think>
+
+
+        '
+    reasoning_parser: qwen3
+  model_id: Qwen/Qwen3.5-4B
+  name: qwen3.5-4b-think2k
+  sampling:
+    max_tokens: 2048
+    temperature: 0.7
+    top_k: 20
+    top_p: 0.8
+  thinking_sampling:
+    max_tokens: 2048
+    temperature: 0.6
+    thinking_token_budget: 2048
+    top_k: 20
+    top_p: 0.95
+name: sum_clique_seqagg
+prompt: sum_to_target/brief
+seed: 0
+sweep: {}
+task: sum_to_target

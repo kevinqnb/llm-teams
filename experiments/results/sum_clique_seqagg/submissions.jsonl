@@ -1,0 +1,2 @@
+{"timestamp": "2026-11-06T09:13:33", "config": "/projectnb/mcnet/kevin/llm-teams/experiments/experiment-configs/sum_clique_seqagg.yaml", "overrides": "", "shards": 3, "job_id": "8473227", "git_commit": "55545fe9645081fab1e7d6f75bf4156d66f2f4be"}
+{"timestamp": "2026-11-06T09:57:45", "config": "/projectnb/mcnet/kevin/llm-teams/experiments/experiment-configs/sum_clique_seqagg_p0.yaml", "overrides": "", "shards": 1, "job_id": "8474345", "git_commit": "1ef4073c7f5912ea9d6260394995a0a99df911a8"}

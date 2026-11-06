@@ -223,7 +223,11 @@ __marimo__/
 notes
 CLAUDE.local.md
 
-# Experiment outputs
-experiments/results/
-analysis/results/
+# Experiment outputs (only sum_clique_seqagg is published, for collaborators)
+experiments/results/*
+!experiments/results/sum_clique_seqagg/
+experiments/results/sum_clique_seqagg/logs/
+!experiments/results/sum_clique_seqagg/**/notes/
+analysis/results/*
+!analysis/results/sum_clique_seqagg_*
 data/raw/
