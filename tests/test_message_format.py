@@ -9,6 +9,12 @@ from tests.test_llm_agents import CLIQUE, INST, llm_cfg, run
 
 @pytest.mark.parametrize("text,expected", [
     ("MESSAGE: raise", "I will raise"),
+    ("hold", "I will hold"),
+    ("  **Lower**.\n", "I will lower"),
+    ("RAISE!", "I will raise"),
+    ("I think we should hold this turn", None),  # token buried in prose is rejected
+    ("hold on, let me think\nraise", None),
+    ("raise lower", None),
     ("hmm\nmessage: **Lower**.", "I will lower"),
     ("MESSAGE: hold\nMESSAGE: raise", "I will raise"),  # last wins
     ("MESSAGE: jump", None),
@@ -41,7 +47,7 @@ def test_structured_drops_free_text():
     assert out.episode["total_messages"] == 0
     assert out.episode["invalid_messages"] > 0
     disc = [r for r in reqs if r.meta["phase"] == "discussion"]
-    assert any("MESSAGE: raise" in m["content"] for r in disc for m in r.messages)
+    assert any("Reply with exactly one word" in m["content"] for r in disc for m in r.messages)
 
 
 def test_free_mode_unchanged():
@@ -49,7 +55,7 @@ def test_free_mode_unchanged():
     out, reqs = run(cfg, INST, respond("Everyone pick 1"))
     assert {n["text"] for n in out.notes} == {"Everyone pick 1"}
     assert out.episode["invalid_messages"] == 0
-    assert not any("MESSAGE: raise" in m["content"] for r in reqs for m in r.messages)
+    assert not any("Reply with exactly one word" in m["content"] for r in reqs for m in r.messages)
 
 
 def test_default_condition_hash_ignores_new_field():

@@ -48,7 +48,7 @@ and runs without a GPU. `sum_clique_smoke.yaml` is the GPU smoke test (p ∈ {0.
 
 `comms.message_format` is `free` (default; any text) or `structured`, where agents may only post
 `I will raise`, `I will lower` or `I will hold` (intent for the next turn). In structured mode the
-agent replies `MESSAGE: raise|lower|hold`; anything else is dropped (not posted) and counted in
+agent replies with exactly one word (`raise|lower|hold`; `MESSAGE: <word>` is also accepted); anything else is dropped (not posted) and counted in
 the episode's `invalid_messages`. Sweepable: `comms.message_format: [free, structured]`. See
 `experiments/experiment-configs/sum_clique_structured_smoke.yaml`.
 

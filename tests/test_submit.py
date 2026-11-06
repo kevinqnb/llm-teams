@@ -41,6 +41,13 @@ def test_print_array_job(tmp_path):
     assert not (tmp_path / "results").exists()  # --print has no side effects
 
 
+def test_job_script_is_a_login_shell_so_module_load_works(tmp_path):
+    r = sh([BASELINES, "--print"], tmp_path, {"LLM_TEAMS_PRELUDE": "module load cuda/12.8"})
+    script = r.stdout.split("# job script", 1)[1].split("\n", 1)[1]
+    assert script.startswith("#!/bin/bash -l\n")
+    assert script.index("module load cuda/12.8") < script.index("uv run")
+
+
 def test_no_overrides_adds_no_stray_argument(tmp_path):
     last = sh([BASELINES, "--print"], tmp_path).stdout.strip().splitlines()[-1]
     assert last.endswith("--shard $SGE_TASK_ID/12") and "''" not in last
