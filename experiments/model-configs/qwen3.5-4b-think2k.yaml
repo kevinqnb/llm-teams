@@ -1,10 +1,18 @@
 name: qwen3.5-4b-think2k
 backend: vllm
 model_id: Qwen/Qwen3.5-4B
-# reasoning_parser lets vLLM enforce thinking_token_budget (it force-closes the think block).
-engine_kwargs: {dtype: bfloat16, max_model_len: 16384, gpu_memory_utilization: 0.85, reasoning_parser: qwen3}
+# reasoning_parser lets vLLM enforce thinking_token_budget. When the budget runs out vLLM forces
+# reasoning_end_str into the output, so the model is told its thinking was cut off and must answer.
+# The wording assumes the single-word raise/lower/hold messages of the structured message format.
+engine_kwargs:
+  dtype: bfloat16
+  max_model_len: 16384
+  gpu_memory_utilization: 0.85
+  reasoning_parser: qwen3
+  reasoning_config:
+    reasoning_end_str: "\n\nMy thinking time is up. I must stop thinking now and give my single final answer: exactly one word, raise, lower or hold.\n</think>\n\n"
 enable_thinking: true
 sampling: {temperature: 0.7, top_p: 0.8, top_k: 20, max_tokens: 2048}
-# Soft budget: after 2048 thinking tokens the think block is closed and the model must answer.
-# max_tokens is unused in this mode (the backend sets it to budget + visible answer allowance).
+# Soft budget: after 2048 thinking tokens the think block is closed (see above) and the model must
+# answer. max_tokens is unused in this mode (the backend sets budget + visible allowance).
 thinking_sampling: {temperature: 0.6, top_p: 0.95, top_k: 20, max_tokens: 2048, thinking_token_budget: 2048}

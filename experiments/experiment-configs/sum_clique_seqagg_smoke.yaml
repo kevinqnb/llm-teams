@@ -4,7 +4,7 @@ name: sum_clique_seqagg_smoke
 task: sum_to_target
 dataset: sum_to_target_n20_g10
 model: qwen3.5-4b-think2k
-prompt: sum_to_target/default
+prompt: sum_to_target/brief
 agents: {type: llm, know_n: true, know_id: true, memory: structured, thinking_phases: [discussion]}
 episode: {max_turns: 3, invalid_policy: random}
 comms:

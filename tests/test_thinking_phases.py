@@ -80,3 +80,33 @@ def test_backend_per_request_flag_overrides_global_thinking():
     res = b.generate([GenerationRequest([], thinking=False), GenerationRequest([])])
     assert sorted(calls) == [(1, False), (1, True)]
     assert [r.content for r in res] == ["lower", "raise"]
+
+
+def test_engine_kwargs_builds_reasoning_config_from_yaml_mapping():
+    pytest.importorskip("vllm")
+    from vllm.config.reasoning import ReasoningConfig
+
+    from llm_teams.backends.vllm_backend import engine_kwargs
+    import yaml
+
+    from llm_teams.config import experiments_dir
+
+    path = experiments_dir() / "model-configs" / "qwen3.5-4b-think2k.yaml"
+    cfg = ModelConfig.model_validate(yaml.safe_load(path.read_text()))
+    kw = engine_kwargs(cfg)
+    rc = kw["reasoning_config"]
+    assert isinstance(rc, ReasoningConfig) and kw["reasoning_parser"] == "qwen3"
+    assert rc.reasoning_end_str.rstrip().endswith("</think>")  # the answer follows the closing tag
+    assert "thinking time is up" in rc.reasoning_end_str
+    assert isinstance(cfg.engine_kwargs["reasoning_config"], dict)  # input config is untouched
+
+
+def test_brief_prompt_asks_for_answer_only_and_warns_about_the_cutoff():
+    cfg = make_cfg(prompt="sum_to_target/brief", agents={"type": "llm", "thinking_phases": ["discussion"]},
+                   episode={"max_turns": 3},
+                   comms={"message_graph": CLIQUE, "message_format": "structured"})
+    _, reqs = run(cfg, INST, reply)
+    action = next(r for r in reqs if r.meta["phase"] == "action").messages[-1]["content"]
+    disc = next(r for r in reqs if r.meta["phase"] == "discussion").messages[-1]["content"]
+    assert "Do not explain or reason out loud" in action and "ANSWER: 1" in action
+    assert "thinking time is limited" in disc and "exactly one word" in disc

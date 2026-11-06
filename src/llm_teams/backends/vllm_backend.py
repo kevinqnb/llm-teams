@@ -11,7 +11,21 @@ from llm_teams.types import GenerationRequest, GenerationResult
 
 
 VISIBLE_TOKENS = 512  # visible-answer allowance for requests without their own max_tokens
-FORCED_END_SLACK = 32  # room for the forced end-of-thinking tokens
+FORCED_END_SLACK = 64  # room for the forced end-of-thinking notice (about 35 tokens)
+
+
+def engine_kwargs(cfg: ModelConfig) -> dict[str, Any]:
+    """cfg.engine_kwargs, with a `reasoning_config` mapping turned into vLLM's ReasoningConfig.
+
+    reasoning_config.reasoning_end_str is the text vLLM forces into the output when the thinking
+    budget runs out; it should end with the closing think tag so the answer follows.
+    """
+    kw = dict(cfg.engine_kwargs)
+    if isinstance(kw.get("reasoning_config"), dict):
+        from vllm.config.reasoning import ReasoningConfig
+
+        kw["reasoning_config"] = ReasoningConfig(**kw["reasoning_config"])
+    return kw
 
 
 class VLLMBackend(Backend):
@@ -26,7 +40,7 @@ class VLLMBackend(Backend):
                 and not cfg.engine_kwargs.get("reasoning_parser"):
             raise ValueError("thinking_token_budget needs engine_kwargs.reasoning_parser (e.g. qwen3)")
         self.cfg = cfg
-        self.llm = LLM(model=cfg.model_id, **cfg.engine_kwargs)
+        self.llm = LLM(model=cfg.model_id, **engine_kwargs(cfg))
 
     def _thinking(self, req: GenerationRequest) -> bool:
         return self.cfg.enable_thinking if req.thinking is None else req.thinking
