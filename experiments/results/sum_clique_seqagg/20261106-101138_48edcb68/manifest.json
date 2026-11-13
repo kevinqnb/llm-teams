@@ -1,6 +1,6 @@
 {
-  "git_commit": "1ef4073c7f5912ea9d6260394995a0a99df911a8",
-  "git_dirty": false,
+  "git_commit": "451b10435def36a48270e77d17a707c42ed91ece",
+  "git_dirty": true,
   "versions": {
     "llm-teams": "0.1.0",
     "vllm": "0.32.0",
@@ -13,7 +13,7 @@
   "hostname": "scc-504",
   "gpu": "3",
   "start": 1793978093.9041262,
-  "end": null,
+  "end": 1793990180.8123708,
   "argv": [
     "/projectnb/mcnet/kevin/llm-teams/.venv/bin/llm-teams",
     "run",
